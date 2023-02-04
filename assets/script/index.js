@@ -4,40 +4,7 @@ const buttonAdd = document.getElementById("form-add");
 const inputSearch = document.getElementById("form-search");
 const books = [];
 
-// generate id book
-const generateId = () => +new Date();
-
-// generate book object
-const generateBookItem = (id, title, author, year, isCompleted) => {
-  return {
-    id,
-    title,
-    author,
-    year,
-    isCompleted,
-  };
-};
-
-// checkbox function
-function checkStatusBook() {
-  const isCheckComplete = document.getElementById("form-isComplete");
-  if (isCheckComplete.checked) {
-    return true;
-  }
-  return false;
-}
-
-// find book index using book id
-function findBookIndex(bookId) {
-  for (const index in books) {
-    if (books[index].id == bookId) {
-      return index;
-    }
-  }
-  return null;
-}
-
-// show data
+// get books
 function getBooks(books = []) {
   const listUnfinished = document.getElementById("shelfbook-unfinished");
   const listFinished = document.getElementById("shelfbook-finished");
@@ -54,7 +21,7 @@ function getBooks(books = []) {
                     <p>Writer: ${book.author} | Year: ${book.year}</p>
                     </div>
                     <div class="shelf-content-item-action">
-                    <button onClick="changeBookStatus(${book.id})" >
+                    <button onClick="updateBookStatus(${book.id})" >
                         <svg
                         xmlns="http://www.w3.org/2000/svg"
                         width="24px"
@@ -109,7 +76,7 @@ function getBooks(books = []) {
                     <p>Writer: ${book.author} | Year: ${book.year}</p>
                     </div>
                     <div class="shelf-content-item-action">
-                    <button onClick="changeBookStatus(${book.id})" >
+                    <button onClick="updateBookStatus(${book.id})" >
                         <svg
                         xmlns="http://www.w3.org/2000/svg"
                         width="24px"
@@ -165,23 +132,22 @@ function getBooks(books = []) {
   });
 }
 
-// // function search book
+// get books by search
 function getBooksBySearch() {
-  const inputSearch = document
-    .getElementById("form-search")
-    .value.toLowerCase();
   const listUnfinished = document.getElementById("shelfbook-unfinished");
   const listFinished = document.getElementById("shelfbook-finished");
+  const valueSearch = inputSearch.value.toLowerCase();
+
   listUnfinished.innerHTML = "";
   listFinished.innerHTML = "";
 
-  if (inputSearch == "") {
+  if (valueSearch == "") {
     document.dispatchEvent(new Event(RENDER));
     return;
   }
 
   for (const book of books) {
-    if (book.title.toLowerCase().includes(inputSearch)) {
+    if (book.title.toLowerCase().includes(valueSearch)) {
       if (book.isCompleted == false) {
         let el = `
                   <div class="shelf-content-item">
@@ -190,7 +156,7 @@ function getBooksBySearch() {
                         <p>Writer: ${book.author} | Year: ${book.year}</p>
                         </div>
                         <div class="shelf-content-item-action">
-                        <button onClick="changeBookStatus(${book.id})" >
+                        <button onClick="updateBookStatus(${book.id})" >
                             <svg
                             xmlns="http://www.w3.org/2000/svg"
                             width="24px"
@@ -245,7 +211,7 @@ function getBooksBySearch() {
                         <p>Writer: ${book.author} | Year: ${book.year}</p>
                         </div>
                         <div class="shelf-content-item-action">
-                        <button onClick="changeBookStatus(${book.id})" >
+                        <button onClick="updateBookStatus(${book.id})" >
                             <svg
                             xmlns="http://www.w3.org/2000/svg"
                             width="24px"
@@ -302,30 +268,31 @@ function getBooksBySearch() {
   }
 }
 
-// add book to bookshelf
+// store book
 function storeBook() {
   const inputTitle = document.getElementById("form-title").value;
   const inputAuthor = document.getElementById("form-author").value;
   const inputYear = document.getElementById("form-year").value;
   const isCompleted = checkStatusBook();
 
-  const id = generateId();
-  const newBook = generateBookItem(
-    id,
-    inputTitle,
-    inputAuthor,
-    inputYear,
-    isCompleted
-  );
+  const id = +new Date();
+  const newBook = {
+    id: id,
+    title: inputTitle,
+    author: inputAuthor,
+    year: inputYear,
+    isCompleted: isCompleted,
+  };
 
   books.unshift(newBook);
   document.dispatchEvent(new Event(RENDER));
+
   saveBook();
 
   showAlert("Added book successfully!");
 }
 
-// function edit book data
+// update book
 function updateBook(bookId) {
   const inputTitle = document.getElementById("form-title");
   const inputAuthor = document.getElementById("form-author");
@@ -350,6 +317,7 @@ function updateBook(bookId) {
     books[bookTarget].author = inputAuthor.value;
     books[bookTarget].year = inputYear.value;
     document.dispatchEvent(new Event(RENDER));
+
     form.reset();
 
     buttonAdd.style.display = "block";
@@ -364,40 +332,18 @@ function updateBook(bookId) {
   buttonCancel.addEventListener("click", (e) => {
     e.preventDefault();
 
+    form.reset();
+
     buttonAdd.style.display = "block";
     buttonEdit.style.display = "none";
     buttonCancel.style.display = "none";
-
-    form.reset();
 
     showAlert("Canceled to edit book!");
   });
 }
 
-// function save data to local storage
-function saveBook() {
-  const parsed = JSON.stringify(books);
-  localStorage.setItem(STORAGE, parsed);
-
-  document.dispatchEvent(new Event(RENDER));
-}
-
-// load data from storage
-function loadDataFromStorage() {
-  const serializedData = localStorage.getItem(STORAGE);
-  let data = JSON.parse(serializedData);
-
-  if (data !== null) {
-    data.forEach((book) => {
-      books.unshift(book);
-    });
-  }
-  document.dispatchEvent(new Event(RENDER));
-  return books;
-}
-
-//  change status book (read or unread) / click the button
-function changeBookStatus(bookId) {
+// update book status
+function updateBookStatus(bookId) {
   const bookIndex = findBookIndex(bookId);
   for (const index in books) {
     if (index === bookIndex) {
@@ -426,6 +372,48 @@ function destroyBook(bookId) {
   showAlert("Deleted book successfully");
 }
 
+// load books from storage
+function loadBooksFromStorage() {
+  const serializedData = localStorage.getItem(STORAGE);
+  let data = JSON.parse(serializedData);
+
+  if (data !== null) {
+    data.forEach((book) => {
+      books.unshift(book);
+    });
+  }
+  document.dispatchEvent(new Event(RENDER));
+  return books;
+}
+
+// checkbox status book
+function checkStatusBook() {
+  const isCheckComplete = document.getElementById("form-isComplete");
+  if (isCheckComplete.checked) {
+    return true;
+  }
+  return false;
+}
+
+// find book index
+function findBookIndex(bookId) {
+  for (const index in books) {
+    if (books[index].id == bookId) {
+      return index;
+    }
+  }
+  return null;
+}
+
+// save book
+function saveBook() {
+  const parsed = JSON.stringify(books);
+  localStorage.setItem(STORAGE, parsed);
+
+  document.dispatchEvent(new Event(RENDER));
+}
+
+// show alert
 function showAlert(message) {
   const alertEl = document.querySelector(".alert");
 
@@ -434,10 +422,7 @@ function showAlert(message) {
 
   setTimeout(() => {
     alertEl.classList.remove("active");
-
-    setTimeout(() => {
-      alertEl.innerText = "";
-    }, 1000);
+    alertEl.innerText = "";
   }, [3000]);
 }
 
@@ -446,7 +431,7 @@ inputSearch.addEventListener("keyup", (e) => {
   getBooksBySearch();
 });
 
-// content loaded & submit form
+// button add on click
 document.addEventListener("DOMContentLoaded", function () {
   buttonAdd.addEventListener("click", function (e) {
     e.preventDefault();
@@ -455,10 +440,10 @@ document.addEventListener("DOMContentLoaded", function () {
     form.reset();
   });
 
-  loadDataFromStorage();
+  loadBooksFromStorage();
 });
 
-// render event addeventlistener
+// get books on load
 document.addEventListener(RENDER, () => {
   getBooks(books);
 });
